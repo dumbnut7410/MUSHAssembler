@@ -1,6 +1,8 @@
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 
@@ -34,10 +36,13 @@ public class AssemblerMain {
 		//actually assemble the code
 		for(String line: lines){
 			codeLineNumber++;
-			if(line.hashCode() == 0)
-				continue; 
 			
 			String[] instr = line.split(" |\\\t");//seperate parts
+			
+			if(opcodes.get(instr[0]) == null)
+				continue; 
+			
+			
 			
 			machineCode += String.format("0x%H",lineNumber) + " ";
 			machineCode += opcodes.get(instr[0]);
@@ -50,7 +55,7 @@ public class AssemblerMain {
 						
 						machineCode += registers.get(instr[i]);
 					} else{
-						machineCode += "Q";
+						machineCode += "0";
 					}
 				}
 			} else{
@@ -137,7 +142,17 @@ public class AssemblerMain {
 			System.err.println("something wrong");
 			return;
 		}
-	
-		System.out.println(assemble(code));
+		String done = assemble(code);
+		
+		
+		try{
+			BufferedWriter writer = new BufferedWriter(new FileWriter(args[1]));
+			writer.write(done);
+				
+			writer.close();
+		} catch (Exception e){
+			System.err.println("error writing file");
+		}
+		System.out.println(done);
 	}
 }
