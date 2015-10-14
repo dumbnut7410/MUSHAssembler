@@ -8,6 +8,7 @@ import java.util.HashMap;
 public class AssemblerMain {
 	public static HashMap<String, String> opcodes = new HashMap<String, String>();
 	public static HashMap<String, String> registers = new HashMap<String, String>();
+	public static HashMap<String, String> labels = new HashMap<String, String>();
 	
 	public static String assemble(String code){
 		
@@ -19,9 +20,17 @@ public class AssemblerMain {
 		
 		//Scan through code to find labels
 		for(String line: lines){
-			//TODO: implement 
+			if(line.hashCode() == 0)
+				continue;
+			
+			if(line.contains(":")){
+				labels.put(line, lineNumber + "");
+			}
+			lineNumber += 2;
 		}
 		
+		
+		lineNumber = 0xf000; //machine code address
 		//actually assemble the code
 		for(String line: lines){
 			codeLineNumber++;
@@ -52,7 +61,7 @@ public class AssemblerMain {
 				} catch (Exception e){
 					System.err.println("Error near line " + codeLineNumber);
 				}
-				machineCode += String.format("%H3", instr[1]);
+				machineCode += String.format("%3H", Integer.parseInt(instr[1])).replace(" ", "0");
 			}
 			machineCode += "\n";
 			lineNumber += 2;
