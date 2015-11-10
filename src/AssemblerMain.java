@@ -21,11 +21,12 @@ public class AssemblerMain {
 				continue;
 
 			if (line.contains(":")) {
-				AssemblerMain.labels.put(line, lineNumber + "");
+				AssemblerMain.labels.put(line.substring(0, line.length() - 1),
+						lineNumber);
+				continue;
 			}
 			lineNumber += 1;
 		}
-
 		lineNumber = 0xf000; // machine code address
 		// actually assemble the code
 		for (final String line : lines) {
@@ -60,8 +61,15 @@ public class AssemblerMain {
 				} catch (final Exception e) {
 					System.err.println("Error near line " + codeLineNumber);
 				}
-				machineCode += String.format("%3H", Integer.parseInt(instr[1]))
-						.replace(" ", "0");
+				try {
+					machineCode += String.format("%3H",
+							Integer.parseInt(instr[1])).replace(" ", "0");
+				} catch (final NumberFormatException e) {
+					System.out.println("label used on line " + codeLineNumber);
+					machineCode += String.format("%3h",
+							AssemblerMain.labels.get(instr[1])).substring(1);
+				}
+
 			}
 			if (coe)
 				machineCode += ",";
@@ -165,5 +173,5 @@ public class AssemblerMain {
 	public static HashMap<String, String> opcodes = new HashMap<String, String>();
 
 	public static HashMap<String, String> registers = new HashMap<String, String>();
-	public static HashMap<String, String> labels = new HashMap<String, String>();
+	public static HashMap<String, Integer> labels = new HashMap<String, Integer>();
 }
