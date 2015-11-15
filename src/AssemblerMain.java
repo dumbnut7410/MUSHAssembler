@@ -10,7 +10,7 @@ public class AssemblerMain {
 	public static String assemble(String code, boolean coe) {
 
 		int codeLineNumber = 0; // assembly line number
-		int lineNumber = 0xf000; // machine code address
+		int lineNumber = 0x0000; // machine code address
 		String machineCode = "";
 
 		final String[] lines = code.split("\n");
@@ -27,7 +27,7 @@ public class AssemblerMain {
 			}
 			lineNumber += 1;
 		}
-		lineNumber = 0xf000; // machine code address
+		lineNumber = 0x0000; // machine code address
 		// actually assemble the code
 		for (final String line : lines) {
 			codeLineNumber++;
@@ -38,15 +38,28 @@ public class AssemblerMain {
 				continue;
 
 			if (!coe)
-				machineCode += String.format("0x%H", lineNumber) + " ";
+				machineCode += String.format("0x%4h", lineNumber).replace(" ",
+						"0")
+						+ " ";
 			machineCode += AssemblerMain.opcodes.get(instr[0]);
 
 			if (!instr[0].equals("li")) {
-				for (int i = 1; i < 4; i++) { // each hex digit
+				int j = 4;
+				if (instr[0].equals("beq")) {
+					machineCode += 0;
+					j = 3;
+				}
+				if (instr[0].equals("j")) {
+					machineCode += "00";
+					j = 2;
+				}
+				for (int i = 1; i < j; i++) { // each hex digit
 					if (instr.length > i) {
-						if (AssemblerMain.registers.get(instr[i]) == null)
+						if (AssemblerMain.registers.get(instr[i]) == null) {
 							System.err.println("Error near line "
 									+ codeLineNumber);
+							throw new RuntimeException();
+						}
 
 						machineCode += AssemblerMain.registers.get(instr[i]);
 					} else {
@@ -59,15 +72,23 @@ public class AssemblerMain {
 						System.err.println("Error near line " + codeLineNumber);
 					}
 				} catch (final Exception e) {
-					System.err.println("Error near line " + codeLineNumber);
+					// System.err.println("Error near line " + codeLineNumber);
 				}
 				try {
 					machineCode += String.format("%3H",
 							Integer.parseInt(instr[1])).replace(" ", "0");
 				} catch (final NumberFormatException e) {
-					System.out.println("label used on line " + codeLineNumber);
-					machineCode += String.format("%3h",
-							AssemblerMain.labels.get(instr[1])).substring(1);
+					// System.out.println("label used on line " +
+					// codeLineNumber);
+					if (AssemblerMain.labels.get(instr[1]) == null) {
+						System.err.println("bad label \"" + instr[1]
+								+ "\" on line " + codeLineNumber);
+						throw new RuntimeException();
+					}
+					machineCode += String
+							.format("%4h", AssemblerMain.labels.get(instr[1]))
+							.substring(1).replace(" ", "0");
+
 				}
 
 			}
@@ -86,7 +107,7 @@ public class AssemblerMain {
 		boolean coe = false;
 		if (args.length < 2) {
 			System.err
-					.println("invalid number of parameters \"input, output\"");
+			.println("invalid number of parameters \"input, output\"");
 			return;
 		}
 
@@ -117,11 +138,13 @@ public class AssemblerMain {
 		if ((args.length > 2) && args[2].equals("-coe"))
 			coe = true;
 
+		code = AssemblerMain.sudo(code);
+		System.out.println(code);
 		String done = AssemblerMain.assemble(code, coe);
 
 		if (coe)
 			done = "MEMORY_INITIALIZATION_RADIX=16;\nMEMORY_INITIALIZATION_VECTOR=\n"
-					+ "6942,\n" + done.substring(0, done.length() - 2) + "\n;";
+					+ done.substring(0, done.length() - 2) + "\n;";
 		try {
 			final BufferedWriter writer = new BufferedWriter(new FileWriter(
 					args[1]));
@@ -170,8 +193,33 @@ public class AssemblerMain {
 		AssemblerMain.registers.put("$s1", "F");
 	}
 
+	public static String sudo(String s) {
+		final String[] lines = s.split("\n");
+		String ret = "";
+		int linenumber = 0;
+
+		// Scan through code to find labels
+		for (String line : lines) {
+			linenumber++;
+			final String[] instr = line.split(" |\\\t");// seperate parts
+
+			// jump followed by label name
+			if (instr[0].equals("j") && !instr[1].contains("$")) {
+				line = "li " + instr[1] + "\nj $imm";
+
+			}
+			// li $reg immediate
+			if (instr[0].equals("li") && instr[1].contains("$")) {
+				line = "li " + instr[2] + "\nmov " + instr[1] + " $imm";
+			}
+			ret += line + "\n";
+		}
+		return ret;
+	}
+
 	public static HashMap<String, String> opcodes = new HashMap<String, String>();
 
 	public static HashMap<String, String> registers = new HashMap<String, String>();
+
 	public static HashMap<String, Integer> labels = new HashMap<String, Integer>();
 }
